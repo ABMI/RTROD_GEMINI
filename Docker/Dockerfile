@@ -38,6 +38,13 @@ RUN apt-get install -y \
 RUN R -e "install.packages('devtools')"
 RUN R CMD javareconf
 
+## Install R packages
+RUN mkdir -p /opt/software/setup/R
+ADD install_packages.r /opt/software/setup/R/
+RUN Rscript /opt/software/setup/R/install_packages.r
+
+RUN mkdir -p /root/gemini/key
+COPY key /root/gemini/key
 
 EXPOSE 3838
 
