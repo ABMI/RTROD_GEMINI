@@ -33,12 +33,14 @@ shinyApp(
                          ,4
                          ,offset = 2
                          ,align='center'
-                         ,uiOutput("sqltype")
-                         ,textInput("server_ip","Server IP",placeholder = '127.0.0.1')
-                         ,textInput("port","port",'',placeholder = '1433')
-                         ,textInput("dw_db","CDM database",'',placeholder = 'cdmName.schema')
-                         ,textInput("usr","USER ID",'',placeholder = 'db id')
-                         ,passwordInput("pw","PASSWORD",'',placeholder = 'db password')
+                         ,selectInput("cdm", "Select input",
+                                     c())
+                         # ,uiOutput("sqltype")
+                         # ,textInput("server_ip","Server IP",placeholder = '127.0.0.1')
+                         # ,textInput("port","port",'',placeholder = '1433')
+                         # ,textInput("dw_db","CDM database",'',placeholder = 'cdmName.schema')
+                         # ,textInput("usr","USER ID",'',placeholder = 'db id')
+                         # ,passwordInput("pw","PASSWORD",'',placeholder = 'db password')
                          ,actionButton('actionBtn','Create Rds')
                          ,downloadButton("dbConnection_btn", "Download")
                        )
@@ -113,6 +115,32 @@ shinyApp(
   )),
   
   server <- (function(input, output,session) {
+    
+    ##### 0. JWT certification ################
+    observe({
+      
+      query <<- parseQueryString(session$clientData$url_search)
+      
+      if(is.null(query$verify_token)){}
+      else{
+        pubkey <- openssl::read_pubkey('/root/icarusviewer/key/PKI_Public.ppk')
+        conData <- jose::jwt_decode_sig(query$verify_token, pubkey)
+        if(!is.integer(grep(',',conData$username))){
+          userAuth <<- lapply(conData, function(x) unlist(strsplit(x,split = ',')))
+        }
+        else{
+          userAuth <<- conData
+        }
+        updateSelectInput(session, "cdm",
+                          label = paste("Select CDM", length(userAuth$cdb_schema)),
+                          choices = userAuth$cdb_schema,
+                          selected = tail(userAuth$cdb_schema, 1)
+        )
+      }
+    })
+    
+    ###########################################
+    
     observe({
       query <<- parseQueryString(session$clientData$url_search)
       updateTextInput(session = session
